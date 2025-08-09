@@ -1,92 +1,60 @@
-import path from 'node:path';
-import { reactRouter } from '@react-router/dev/vite';
-import { reactRouterHonoServer } from 'react-router-hono-server/dev';
+// web/vite.config.js
 import { defineConfig } from 'vite';
-import babel from 'vite-plugin-babel';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import { addRenderIds } from './plugins/addRenderIds';
-import { aliases } from './plugins/aliases';
-import consoleToParent from './plugins/console-to-parent';
-import { layoutWrapperPlugin } from './plugins/layouts';
-import { loadFontsFromTailwindSource } from './plugins/loadFontsFromTailwindSource';
-import { nextPublicProcessEnv } from './plugins/nextPublicProcessEnv';
-import { restart } from './plugins/restart';
-import { restartEnvFileChange } from './plugins/restartEnvFileChange';
+import { resolve } from 'path';
+import copy from 'vite-plugin-copy';
 
 export default defineConfig({
-  // Keep them available via import.meta.env.NEXT_PUBLIC_*
-  envPrefix: 'NEXT_PUBLIC_',
-  optimizeDeps: {
-    // Explicitly include fast-glob, since it gets dynamically imported and we
-    // don't want that to cause a re-bundle.
-    include: ['fast-glob', 'lucide-react'],
-    exclude: [
-      '@hono/auth-js/react',
-      '@hono/auth-js',
-      '@auth/core',
-      '@hono/auth-js',
-      'hono/context-storage',
-      '@auth/core/errors',
-      'fsevents',
-      'lightningcss',
-    ],
+  // Set base path to root for proper asset loading
+  base: '/',
+  
+  // Configure build settings
+  build: {
+    // Output directory that matches Cloudflare Pages settings
+    outDir: 'build/client',
+    
+    // Generate sourcemaps for debugging (optional)
+    sourcemap: true,
+    
+    // Rollup configuration for proper entry handling
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html')
+      }
+    }
   },
-  logLevel: 'info',
+  
+  // Set public directory where assets should be served from
+  publicDir: 'public',
+  
+  // Add plugins
   plugins: [
-    nextPublicProcessEnv(),
-    restartEnvFileChange(),
-    reactRouterHonoServer({
-      serverEntryPoint: './__create/index.ts',
-      runtime: 'node',
-    }),
-    babel({
-      include: ['src/**/*.{js,jsx,ts,tsx}'], // or RegExp: /src\/.*\.[tj]sx?$/
-      exclude: /node_modules/, // skip everything else
-      babelConfig: {
-        babelrc: false, // don’t merge other Babel files
-        configFile: false,
-        plugins: ['styled-jsx/babel'],
-      },
-    }),
-    restart({
-      restart: [
-        'src/**/page.jsx',
-        'src/**/page.tsx',
-        'src/**/layout.jsx',
-        'src/**/layout.tsx',
-        'src/**/route.js',
-        'src/**/route.ts',
+    // Copy plugin ensures index.html is included in build
+    copy({
+      targets: [
+        { 
+          src: 'public/index.html', 
+          dest: 'build/client' 
+        },
+        // Copy all public assets
+        { 
+          src: 'public/**/*', 
+          dest: 'build/client' 
+        }
       ],
-    }),
-    consoleToParent(),
-    loadFontsFromTailwindSource(),
-    addRenderIds(),
-    reactRouter(),
-    tsconfigPaths(),
-    aliases(),
-    layoutWrapperPlugin(),
+      hook: 'buildEnd' // Copy after build completes
+    })
   ],
+  
+  // Server configuration for development
+  server: {
+    port: 3000,
+    open: true
+  },
+  
+  // Resolve aliases for cleaner imports
   resolve: {
     alias: {
-      lodash: 'lodash-es',
-      'npm:stripe': 'stripe',
-      stripe: path.resolve(__dirname, './src/__create/stripe'),
-      '@auth/create/react': '@hono/auth-js/react',
-      '@auth/create': path.resolve(__dirname, './src/__create/@auth/create'),
-      '@': path.resolve(__dirname, 'src'),
-    },
-    dedupe: ['react', 'react-dom'],
-  },
-  clearScreen: false,
-  server: {
-    allowedHosts: true,
-    host: '0.0.0.0',
-    port: 4000,
-    hmr: {
-      overlay: false,
-    },
-    warmup: {
-      clientFiles: ['./src/app/**/*', './src/app/root.tsx', './src/app/routes.ts'],
-    },
-  },
+      '@': resolve(__dirname, 'src')
+    }
+  }
 });
