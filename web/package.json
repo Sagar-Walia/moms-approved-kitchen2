@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "react-router dev",
 		"typecheck": "react-router typegen && tsc --noEmit",
-		"build": "vite build"
+		"build": "vite build",
 		"postinstall": "npm audit fix --force"
 	},
 	"dependencies": {
